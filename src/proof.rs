@@ -20,11 +20,11 @@ use std::hash::Hasher;
 use std::hash::SipHasher;
 use std::ops::Range;
 use std::u16;
-use verify::ProofBuilder;
 use verify::verify_one;
+use verify::ProofBuilder;
 
 /// A tree structure for storing proofs and grammar derivations.
-#[derive(Clone,Debug,Eq)]
+#[derive(Clone, Debug, Eq)]
 pub struct ProofTree {
     /// The axiom/theorem being applied at the root.
     pub address: StatementAddress,
@@ -43,7 +43,8 @@ impl PartialEq for ProofTree {
 
 impl Hash for ProofTree {
     fn hash<H>(&self, state: &mut H)
-        where H: Hasher
+    where
+        H: Hasher,
     {
         self.hash.hash(state)
     }
@@ -67,7 +68,7 @@ impl ProofTree {
 
 /// An array of proof trees, used to collect steps of a proof
 /// in proof order
-#[derive(Default,Debug,Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct ProofTreeArray {
     map: HashMap<u64, usize>,
     /// The list of proof trees
@@ -80,10 +81,9 @@ pub struct ProofTreeArray {
     indent: Vec<u16>,
 }
 
-
 /// A strongly typed representation of the RPN proof style used by
 /// Metamath proofs (except compressed style)
-#[derive(Copy,Clone,Debug,Eq,PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum RPNStep {
     /// A "normal" step is one that defines a new formula not seen
     /// before in this proof.
@@ -121,11 +121,12 @@ impl ProofTreeArray {
     /// Create a proof tree array from the proof  a single $p statement,
     /// returning the result of the given proof builder, or an error if the
     /// proof is faulty
-    pub fn new(sset: &SegmentSet,
-               nset: &Nameset,
-               scopes: &ScopeResult,
-               stmt: StatementRef)
-               -> Result<ProofTreeArray, Diagnostic> {
+    pub fn new(
+        sset: &SegmentSet,
+        nset: &Nameset,
+        scopes: &ScopeResult,
+        stmt: StatementRef,
+    ) -> Result<ProofTreeArray, Diagnostic> {
         let mut arr = ProofTreeArray::default();
         arr.qed = try!(verify_one(sset, nset, scopes, &mut arr, stmt));
         arr.indent = arr.calc_indent();
@@ -141,7 +142,6 @@ impl ProofTreeArray {
     /// using Dijkstra's algorithm.  Based on the example in
     /// https://doc.rust-lang.org/std/collections/binary_heap/.
     fn calc_indent(&self) -> Vec<u16> {
-
         #[derive(Copy, Clone, Eq, PartialEq)]
         struct IndentNode {
             index: usize,
@@ -166,7 +166,7 @@ impl ProofTreeArray {
         }
 
         // dist[node] = current shortest distance from `start` to `node`
-        let mut dist: Vec<u16> = vec![u16::MAX;self.trees.len()];
+        let mut dist: Vec<u16> = vec![u16::MAX; self.trees.len()];
 
         let mut heap = BinaryHeap::new();
 
@@ -333,12 +333,13 @@ impl ProofBuilder for ProofTreeArray {
         hyps.push(hyp);
     }
 
-    fn build(&mut self,
-             addr: StatementAddress,
-             trees: Vec<usize>,
-             pool: &[u8],
-             expr: Range<usize>)
-             -> usize {
+    fn build(
+        &mut self,
+        addr: StatementAddress,
+        trees: Vec<usize>,
+        pool: &[u8],
+        expr: Range<usize>,
+    ) -> usize {
         let tree = ProofTree::new(self, addr, trees);
         self.index(&tree).unwrap_or_else(|| {
             let ix = self.trees.len();
@@ -361,7 +362,7 @@ impl ProofBuilder for ProofTreeArray {
 }
 
 /// List of possible proof output types.
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ProofStyle {
     /// `/compressed` proof output (default). Label list followed by step letters.
     Compressed,
@@ -408,42 +409,45 @@ impl<'a> fmt::Display for ProofTreePrinter<'a> {
         let parents = self.arr.count_parents();
 
         let explicit = match self.style {
-            ProofStyle::Explicit |
-            ProofStyle::PackedExplicit => true,
+            ProofStyle::Explicit | ProofStyle::PackedExplicit => true,
             _ => false,
         };
 
         let mut stmt_lookup: HashMap<StatementAddress, (&str, Vec<&str>)> = HashMap::new();
         for tree in &self.arr.trees {
-            stmt_lookup.entry(tree.address)
-                .or_insert_with(|| {
-                    let label = self.sset.statement(tree.address).label();
-                    (as_str(label),
-                     if explicit {
+            stmt_lookup.entry(tree.address).or_insert_with(|| {
+                let label = self.sset.statement(tree.address).label();
+                (
+                    as_str(label),
+                    if explicit {
                         match self.scope.get(label) {
-                            Some(frame) => {
-                                frame.hypotheses
-                                    .iter()
-                                    .map(|hyp| as_str(self.sset.statement(hyp.address()).label()))
-                                    .collect()
-                            }
+                            Some(frame) => frame
+                                .hypotheses
+                                .iter()
+                                .map(|hyp| as_str(self.sset.statement(hyp.address()).label()))
+                                .collect(),
                             None => vec![],
                         }
                     } else {
                         vec![]
-                    })
-                });
+                    },
+                )
+            });
         }
 
         let mut print_step = |item: RPNStep| -> fmt::Result {
-            let estr = |hyp| if explicit {
-                format!("{}=",
+            let estr = |hyp| {
+                if explicit {
+                    format!(
+                        "{}=",
                         match hyp {
                             Some((stmt, i)) => stmt_lookup[&stmt].1[i],
                             None => as_str(self.thm_label),
-                        })
-            } else {
-                String::new()
+                        }
+                    )
+                } else {
+                    String::new()
+                }
             };
             let fmt = match item {
                 RPNStep::Normal { fwdref, addr, hyp } => {
@@ -473,8 +477,7 @@ impl<'a> fmt::Display for ProofTreePrinter<'a> {
                     try!(print_step(item));
                 }
             }
-            ProofStyle::Packed |
-            ProofStyle::PackedExplicit => {
+            ProofStyle::Packed | ProofStyle::PackedExplicit => {
                 for item in self.arr.to_rpn(&parents, explicit) {
                     try!(print_step(item));
                 }

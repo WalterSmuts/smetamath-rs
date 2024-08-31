@@ -15,14 +15,16 @@ pub type HashSet<K> = collections::HashSet<K, BuildHasherDefault<FnvHasher>>;
 
 /// Create a new empty map.
 pub fn new_map<K, V>() -> HashMap<K, V>
-    where K: Eq + Hash
+where
+    K: Eq + Hash,
 {
     HashMap::<K, V>::with_hasher(Default::default())
 }
 
 /// Create a new empty set.
 pub fn new_set<K>() -> HashSet<K>
-    where K: Eq + Hash
+where
+    K: Eq + Hash,
 {
     HashSet::<K>::with_hasher(Default::default())
 }
@@ -68,9 +70,11 @@ pub fn fast_extend<T: Copy>(vec: &mut Vec<T>, other: &[T]) {
     vec.reserve(other.len());
     unsafe {
         let len = vec.len();
-        short_copy(other.get_unchecked(0),
-                   vec.get_unchecked_mut(len),
-                   other.len());
+        short_copy(
+            other.get_unchecked(0),
+            vec.get_unchecked_mut(len),
+            other.len(),
+        );
         vec.set_len(len + other.len());
     }
 }
@@ -78,7 +82,10 @@ pub fn fast_extend<T: Copy>(vec: &mut Vec<T>, other: &[T]) {
 /// Appends a slice of a byte vector to the end of the same vector.
 #[inline(always)]
 pub fn copy_portion(vec: &mut Vec<u8>, from: Range<usize>) {
-    let Range { start: copy_start, end: copy_end } = from.clone();
+    let Range {
+        start: copy_start,
+        end: copy_end,
+    } = from.clone();
     &vec[from]; // for the bounds check
     unsafe {
         let copy_len = copy_end - copy_start;
@@ -109,7 +116,12 @@ fn aligned_part(buffer: &[u8]) -> (usize, &[u32]) {
     sptr += offset; // just checked this won't overflow
     eptr -= eptr & 3; // cannot overflow by construction
 
-    unsafe { (offset, slice::from_raw_parts(sptr as *const u32, (eptr - sptr) / 4)) }
+    unsafe {
+        (
+            offset,
+            slice::from_raw_parts(sptr as *const u32, (eptr - sptr) / 4),
+        )
+    }
 }
 
 /// Search for a properly formatted set.mm-style chapter header in a byte
@@ -152,8 +164,9 @@ pub fn find_chapter_header(mut buffer: &[u8]) -> Option<usize> {
         }
 
         // make sure the line is what we think it is
-        if buffer.len() - midp < LANDING_STRIP.len() + 1 ||
-           &buffer[midp + 1..midp + 1 + LANDING_STRIP.len()] != LANDING_STRIP {
+        if buffer.len() - midp < LANDING_STRIP.len() + 1
+            || &buffer[midp + 1..midp + 1 + LANDING_STRIP.len()] != LANDING_STRIP
+        {
             return None;
         }
 
@@ -162,8 +175,11 @@ pub fn find_chapter_header(mut buffer: &[u8]) -> Option<usize> {
             midp -= 1;
         }
         // make sure we reached [CRLF] $(
-        if midp >= 2 && buffer[midp] == b'(' && buffer[midp - 1] == b'$' &&
-           (buffer[midp - 2] == b'\r' || buffer[midp - 2] == b'\n') {
+        if midp >= 2
+            && buffer[midp] == b'('
+            && buffer[midp - 1] == b'$'
+            && (buffer[midp - 2] == b'\r' || buffer[midp - 2] == b'\n')
+        {
             Some(midp - 1)
         } else {
             None

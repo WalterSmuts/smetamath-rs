@@ -1,12 +1,12 @@
 use database::Database;
 use database::DbOptions;
 use diag::Diagnostic;
+use parser::Comparer;
 use parser::SegmentOrder;
+use parser::Span;
 use parser::StatementAddress;
 use parser::StatementType;
-use parser::Span;
 use parser::NO_STATEMENT;
-use parser::Comparer;
 use std::cmp::Ordering;
 
 #[test]
@@ -36,8 +36,10 @@ fn test_segment_order() {
 fn mkdb(text: &[u8]) -> Database {
     let dbo = DbOptions::default();
     let mut db = Database::new(dbo);
-    db.parse("test.mm".to_owned(),
-             vec![("test.mm".to_owned(), text.to_owned())]);
+    db.parse(
+        "test.mm".to_owned(),
+        vec![("test.mm".to_owned(), text.to_owned())],
+    );
     db
 }
 
@@ -47,12 +49,18 @@ fn test_segref() {
     let seg = db.parse_result().segments()[0];
     assert_eq!(seg.bytes(), 5);
     let mut stmt_iter = seg.into_iter();
-    assert_eq!(stmt_iter.next().unwrap().statement_type(),
-               StatementType::OpenGroup);
-    assert_eq!(stmt_iter.next().unwrap().statement_type(),
-               StatementType::CloseGroup);
-    assert_eq!(stmt_iter.next().unwrap().statement_type(),
-               StatementType::Eof);
+    assert_eq!(
+        stmt_iter.next().unwrap().statement_type(),
+        StatementType::OpenGroup
+    );
+    assert_eq!(
+        stmt_iter.next().unwrap().statement_type(),
+        StatementType::CloseGroup
+    );
+    assert_eq!(
+        stmt_iter.next().unwrap().statement_type(),
+        StatementType::Eof
+    );
     assert!(stmt_iter.next().is_none());
 }
 
@@ -89,13 +97,17 @@ macro_rules! parse_test {
             let seg = db.parse_result().segments()[0];
             assert_eq!(seg.diagnostics, &$diags);
         }
-    }
+    };
 }
 
 parse_test!(test_valid_whitespace, b" \t\r\n\x0C", []);
-parse_test!(test_invalid_c0,
-            b"$c\0X $.",
-            [(0, Diagnostic::BadCharacter(2, 0))]);
-parse_test!(test_invalid_del,
-            b"$c X Y\x7F $.",
-            [(0, Diagnostic::BadCharacter(6, 0x7F))]);
+parse_test!(
+    test_invalid_c0,
+    b"$c\0X $.",
+    [(0, Diagnostic::BadCharacter(2, 0))]
+);
+parse_test!(
+    test_invalid_del,
+    b"$c X Y\x7F $.",
+    [(0, Diagnostic::BadCharacter(6, 0x7F))]
+);

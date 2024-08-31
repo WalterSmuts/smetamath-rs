@@ -18,8 +18,8 @@
 //! The nameset is also responsible for maintaining the `Atom` table.
 
 use database::DbOptions;
-use parser::Comparer;
 use parser::copy_token;
+use parser::Comparer;
 use parser::Segment;
 use parser::SegmentId;
 use parser::SegmentOrder;
@@ -35,9 +35,9 @@ use std::hash::Hash;
 use std::sync::Arc;
 use std::u32;
 use util;
+use util::new_set;
 use util::HashMap;
 use util::HashSet;
-use util::new_set;
 
 // An earlier version of this module was tasked with detecting duplicate symbol errors;
 // current task is just lookup
@@ -64,7 +64,7 @@ use util::new_set;
 /// a new type like "LAtom" for labels, with "Atom" for symbols only.
 ///
 /// [INC]: https://github.com/sorear/smetamath-rs/issues/11
-#[derive(Copy,Clone,Debug,PartialEq,Eq,Default,Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Hash)]
 pub struct Atom(u32);
 
 // currently we use Vecs for a lot of things in the index.  we might consider
@@ -74,7 +74,8 @@ type NameSlot<A, V> = Vec<(A, V)>;
 
 // helper functions for handling the name index
 fn slot_insert<A, C, V>(slot: &mut NameSlot<A, V>, comparer: &C, address: A, value: V)
-    where C: Comparer<A>
+where
+    C: Comparer<A>,
 {
     slot.push((address, value));
     slot.sort_by(|x, y| comparer.cmp(&x.0, &y.0));
@@ -89,10 +90,11 @@ fn autoviv<K: Hash + Eq, V: Default>(map: &mut HashMap<K, V>, key: K) -> &mut V 
 }
 
 fn deviv<K, Q: ?Sized, V, F>(map: &mut HashMap<K, V>, key: &Q, fun: F)
-    where F: FnOnce(&mut V),
-          K: Borrow<Q> + Hash + Eq,
-          Q: Hash + Eq,
-          V: Default + Eq
+where
+    F: FnOnce(&mut V),
+    K: Borrow<Q> + Hash + Eq,
+    Q: Hash + Eq,
+    V: Default + Eq,
 {
     let kill = match map.get_mut(key) {
         None => false,
@@ -125,7 +127,7 @@ struct LabelInfo {
     labels: NameSlot<StatementAddress, ()>,
 }
 
-#[derive(Default,Debug,Clone)]
+#[derive(Default, Debug, Clone)]
 struct AtomTable {
     table: HashMap<Token, Atom>,
     reverse: Vec<Token>,
@@ -150,7 +152,7 @@ fn intern(table: &mut AtomTable, tok: TokenPtr) -> Atom {
 /// To extract data from a nameset object, construct a `NameReader` and use the
 /// methods thereon.  The reader can then be used at any later time to check
 /// recalculation.
-#[derive(Default,Debug,Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Nameset {
     atom_table: AtomTable,
     options: Arc<DbOptions>,
@@ -183,8 +185,10 @@ impl Nameset {
 
         let mut keys_to_remove = Vec::new();
         for (&seg_id, seg) in &self.segments {
-            if segs.segment_opt(seg_id)
-                .map_or(true, |sref| !util::ptr_eq::<Segment>(&sref.segment, &seg)) {
+            if segs
+                .segment_opt(seg_id)
+                .map_or(true, |sref| !util::ptr_eq::<Segment>(&sref.segment, &seg))
+            {
                 keys_to_remove.push(seg_id);
             }
         }
@@ -238,10 +242,12 @@ impl Nameset {
             if self.options.incremental && slot.atom == Atom::default() {
                 slot.atom = intern(&mut self.atom_table, labelr);
             }
-            slot_insert(&mut slot.labels,
-                        &*self.order,
-                        StatementAddress::new(id, labdef.index),
-                        ());
+            slot_insert(
+                &mut slot.labels,
+                &*self.order,
+                StatementAddress::new(id, labdef.index),
+                (),
+            );
         }
 
         for &ref floatdef in &seg.floats {
@@ -252,19 +258,27 @@ impl Nameset {
             }
             let address = StatementAddress::new(id, floatdef.start);
             let tcatom = intern(&mut self.atom_table, &floatdef.typecode);
-            slot_insert(&mut slot.float,
-                        &*self.order,
-                        address,
-                        (floatdef.label.clone(), floatdef.typecode.clone(), tcatom));
+            slot_insert(
+                &mut slot.float,
+                &*self.order,
+                address,
+                (floatdef.label.clone(), floatdef.typecode.clone(), tcatom),
+            );
         }
 
         for &ref dvdef in &seg.global_dvs {
-            let vars = dvdef.vars.iter().map(|v| intern(&mut self.atom_table, &v)).collect();
+            let vars = dvdef
+                .vars
+                .iter()
+                .map(|v| intern(&mut self.atom_table, &v))
+                .collect();
             self.dv_gen = self.generation;
-            slot_insert(&mut self.dv_info,
-                        &*self.order,
-                        StatementAddress::new(id, dvdef.start),
-                        vars);
+            slot_insert(
+                &mut self.dv_info,
+                &*self.order,
+                StatementAddress::new(id, dvdef.start),
+                vars,
+            );
         }
     }
 
@@ -313,7 +327,11 @@ impl Nameset {
     ///
     /// If you don't know about the name, use lookup_symbol instead.
     pub fn get_atom(&self, name: TokenPtr) -> Atom {
-        self.atom_table.table.get(name).expect("please only use get_atom for local $v").clone()
+        self.atom_table
+            .table
+            .get(name)
+            .expect("please only use get_atom for local $v")
+            .clone()
     }
 
     /// Map atoms back to names.
@@ -328,11 +346,9 @@ impl Nameset {
     /// Looks up the address and atom for a statement label.
     pub fn lookup_label(&self, label: TokenPtr) -> Option<LookupLabel> {
         self.labels.get(label).and_then(|&ref lslot| {
-            lslot.labels.first().map(|&(addr, _)| {
-                LookupLabel {
-                    atom: lslot.atom,
-                    address: addr,
-                }
+            lslot.labels.first().map(|&(addr, _)| LookupLabel {
+                atom: lslot.atom,
+                address: addr,
             })
         })
     }
@@ -340,16 +356,13 @@ impl Nameset {
     /// Looks up the address and type for a math symbol.
     pub fn lookup_symbol(&self, symbol: TokenPtr) -> Option<LookupSymbol> {
         self.symbols.get(symbol).and_then(|&ref syminfo| {
-            syminfo.all.first().map(|&(addr, stype)| {
-                LookupSymbol {
-                    stype: stype,
-                    atom: syminfo.atom,
-                    address: addr,
-                    const_address: syminfo.constant.first().map(|&(addr, _)| addr),
-                }
+            syminfo.all.first().map(|&(addr, stype)| LookupSymbol {
+                stype: stype,
+                atom: syminfo.atom,
+                address: addr,
+                const_address: syminfo.constant.first().map(|&(addr, _)| addr),
             })
         })
-
     }
 }
 
@@ -480,14 +493,15 @@ impl<'a> NameReader<'a> {
                 if self.incremental {
                     self.found_symbol.insert(syminfo.atom);
                 }
-                syminfo.float.first().map(|&(addr, (ref label, ref typecode, tcatom))| {
-                    LookupFloat {
+                syminfo
+                    .float
+                    .first()
+                    .map(|&(addr, (ref label, ref typecode, tcatom))| LookupFloat {
                         address: addr,
                         label: &label,
                         typecode: &typecode,
                         typecode_atom: tcatom,
-                    }
-                })
+                    })
             }
             None => {
                 if self.incremental {

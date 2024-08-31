@@ -26,12 +26,12 @@ pub mod util;
 pub mod verify;
 
 #[cfg(test)]
-mod util_tests;
-#[cfg(test)]
 mod parser_tests;
+#[cfg(test)]
+mod util_tests;
 
-use clap::Arg;
 use clap::App;
+use clap::Arg;
 use database::Database;
 use database::DbOptions;
 use diag::DiagnosticClass;
@@ -42,43 +42,74 @@ use std::mem;
 use std::str::FromStr;
 
 fn positive_integer(val: String) -> Result<(), String> {
-    u32::from_str(&val).map(|_| ()).map_err(|e| format!("{}", e))
+    u32::from_str(&val)
+        .map(|_| ())
+        .map_err(|e| format!("{}", e))
 }
 
 fn main() {
     let matches = App::new("smetamath-rs")
         .version(crate_version!())
         .about("A Metamath database verifier and processing tool")
-        .arg(Arg::with_name("DATABASE").help("Database file to load").required_unless("TEXT"))
-        .arg(Arg::with_name("split")
-            .help("Process files > 1 MiB in multiple segments")
-            .long("split"))
-        .arg(Arg::with_name("timing").help("Print milliseconds after each stage").long("timing"))
-        .arg(Arg::with_name("verify").help("Check proof validity").long("verify").short("v"))
-        .arg(Arg::with_name("trace-recalc")
-            .help("Print segments as they are recalculated")
-            .long("trace-recalc"))
-        .arg(Arg::with_name("free")
-            .help("Explicitly deallocate working memory before exit")
-            .long("free"))
-        .arg(Arg::with_name("repeat").help("Demonstrate incremental verifier").long("repeat"))
-        .arg(Arg::with_name("jobs")
-            .help("Number of threads to use for verification")
-            .long("jobs")
-            .short("j")
-            .takes_value(true)
-            .validator(positive_integer))
-        .arg(Arg::with_name("export")
-            .help("Output a proof file")
-            .long("export")
-            .short("e")
-            .multiple(true)
-            .takes_value(true))
-        .arg(Arg::with_name("TEXT")
-            .long("text")
-            .help("Provide raw database content on the command line")
-            .value_names(&["NAME", "TEXT"])
-            .multiple(true))
+        .arg(
+            Arg::with_name("DATABASE")
+                .help("Database file to load")
+                .required_unless("TEXT"),
+        )
+        .arg(
+            Arg::with_name("split")
+                .help("Process files > 1 MiB in multiple segments")
+                .long("split"),
+        )
+        .arg(
+            Arg::with_name("timing")
+                .help("Print milliseconds after each stage")
+                .long("timing"),
+        )
+        .arg(
+            Arg::with_name("verify")
+                .help("Check proof validity")
+                .long("verify")
+                .short("v"),
+        )
+        .arg(
+            Arg::with_name("trace-recalc")
+                .help("Print segments as they are recalculated")
+                .long("trace-recalc"),
+        )
+        .arg(
+            Arg::with_name("free")
+                .help("Explicitly deallocate working memory before exit")
+                .long("free"),
+        )
+        .arg(
+            Arg::with_name("repeat")
+                .help("Demonstrate incremental verifier")
+                .long("repeat"),
+        )
+        .arg(
+            Arg::with_name("jobs")
+                .help("Number of threads to use for verification")
+                .long("jobs")
+                .short("j")
+                .takes_value(true)
+                .validator(positive_integer),
+        )
+        .arg(
+            Arg::with_name("export")
+                .help("Output a proof file")
+                .long("export")
+                .short("e")
+                .multiple(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("TEXT")
+                .long("text")
+                .help("Provide raw database content on the command line")
+                .value_names(&["NAME", "TEXT"])
+                .multiple(true),
+        )
         .get_matches();
 
     let mut options = DbOptions::default();
@@ -97,17 +128,15 @@ fn main() {
             data.push((kv[0].clone(), kv[1].clone().into_bytes()));
         }
     }
-    let start = matches.value_of("DATABASE")
+    let start = matches
+        .value_of("DATABASE")
         .map(|x| x.to_owned())
         .unwrap_or_else(|| data[0].0.clone());
 
     loop {
         db.parse(start.clone(), data.clone());
 
-        let mut types = vec![
-            DiagnosticClass::Parse,
-            DiagnosticClass::Scope,
-        ];
+        let mut types = vec![DiagnosticClass::Parse, DiagnosticClass::Scope];
 
         if matches.is_present("verify") {
             types.push(DiagnosticClass::Verify);
@@ -146,25 +175,26 @@ fn print_annotation(lc: &mut LineCache, ann: Notation) {
     }
     let offs = (ann.span.start + ann.source.span.start) as usize;
     let (row, col) = lc.from_offset(&ann.source.text, offs);
-    println!("{}:{}:{}:{:?}:{}{}",
-             ann.source.name,
-             row,
-             col,
-             ann.level,
-             ann.message,
-             args);
+    println!(
+        "{}:{}:{}:{:?}:{}{}",
+        ann.source.name, row, col, ann.level, ann.message, args
+    );
 
     let line_end = LineCache::line_end(&ann.source.text, offs);
     let eoffs = (ann.span.end + ann.source.span.start) as usize;
     let line_start = offs - (col - 1) as usize;
     if eoffs <= line_end {
-        println!("|{}»{}«{}",
-                 String::from_utf8_lossy(&ann.source.text[line_start..offs]),
-                 String::from_utf8_lossy(&ann.source.text[offs..eoffs]),
-                 String::from_utf8_lossy(&ann.source.text[eoffs..line_end]));
+        println!(
+            "|{}»{}«{}",
+            String::from_utf8_lossy(&ann.source.text[line_start..offs]),
+            String::from_utf8_lossy(&ann.source.text[offs..eoffs]),
+            String::from_utf8_lossy(&ann.source.text[eoffs..line_end])
+        );
     } else {
-        println!("|{}»{}",
-                 String::from_utf8_lossy(&ann.source.text[line_start..offs]),
-                 String::from_utf8_lossy(&ann.source.text[offs..line_end]));
+        println!(
+            "|{}»{}",
+            String::from_utf8_lossy(&ann.source.text[line_start..offs]),
+            String::from_utf8_lossy(&ann.source.text[offs..line_end])
+        );
     }
 }

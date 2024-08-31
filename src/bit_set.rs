@@ -11,9 +11,8 @@ use std::mem::size_of;
 use std::ops::BitOrAssign;
 use std::slice;
 
-
 /// A set of variable indices.
-#[derive(Default,Debug)]
+#[derive(Default, Debug)]
 pub struct Bitset {
     head: usize,
     // You can take out the Box here and it will still compile (and, with more

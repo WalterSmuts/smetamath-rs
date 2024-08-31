@@ -64,24 +64,27 @@ impl error::Error for ExportError {
 }
 
 /// Export an mmp file for a given statement.
-pub fn export_mmp<W: Write>(sset: &SegmentSet,
-                            nset: &Nameset,
-                            scope: &ScopeResult,
-                            stmt: StatementRef,
-                            out: &mut W)
-                            -> Result<(), ExportError> {
+pub fn export_mmp<W: Write>(
+    sset: &SegmentSet,
+    nset: &Nameset,
+    scope: &ScopeResult,
+    stmt: StatementRef,
+    out: &mut W,
+) -> Result<(), ExportError> {
     let thm_label = stmt.label();
-    try!(writeln!(out,
-                  "$( <MM> <PROOF_ASST> THEOREM={}  LOC_AFTER=?\n",
-                  as_str(thm_label)));
+    try!(writeln!(
+        out,
+        "$( <MM> <PROOF_ASST> THEOREM={}  LOC_AFTER=?\n",
+        as_str(thm_label)
+    ));
     if let Some(comment) = stmt.associated_comment() {
         let mut span = comment.span();
         span.start += 2;
         span.end -= 3;
-        let cstr = Regex::new(r"\n +")
-            .unwrap()
-            .replace_all(as_str(span.as_ref(&comment.segment().segment.buffer)),
-                     "\n  ");
+        let cstr = Regex::new(r"\n +").unwrap().replace_all(
+            as_str(span.as_ref(&comment.segment().segment.buffer)),
+            "\n  ",
+        );
         try!(writeln!(out, "*{}\n", cstr));
     }
 
@@ -152,7 +155,8 @@ pub fn export_mmp<W: Write>(sset: &SegmentSet,
     }
 
     let indent = arr.indent();
-    let spaces = lines.iter()
+    let spaces = lines
+        .iter()
         .map(|&(cur, _, ref line)| line.len() as i16 - indent[cur] as i16)
         .max()
         .unwrap() as u16;
@@ -164,19 +168,21 @@ pub fn export_mmp<W: Write>(sset: &SegmentSet,
         line.push_str(&String::from_utf8_lossy(&arr.exprs[cur]));
         try!(writeln!(out, "{}", line));
     }
-    try!(writeln!(out,
-                  "\n$={}",
-                  ProofTreePrinter {
-                      sset: sset,
-                      nset: nset,
-                      scope: scope,
-                      thm_label: thm_label,
-                      style: ProofStyle::PackedExplicit,
-                      arr: &arr,
-                      initial_chr: 2,
-                      indent: 6,
-                      line_width: 79,
-                  }));
+    try!(writeln!(
+        out,
+        "\n$={}",
+        ProofTreePrinter {
+            sset: sset,
+            nset: nset,
+            scope: scope,
+            thm_label: thm_label,
+            style: ProofStyle::PackedExplicit,
+            arr: &arr,
+            initial_chr: 2,
+            indent: 6,
+            line_width: 79,
+        }
+    ));
 
     try!(writeln!(out, "\n$)"));
     Ok(())
