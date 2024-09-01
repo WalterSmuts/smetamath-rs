@@ -86,7 +86,7 @@ pub fn copy_portion(vec: &mut Vec<u8>, from: Range<usize>) {
         start: copy_start,
         end: copy_end,
     } = from.clone();
-    &vec[from]; // for the bounds check
+    let _ = &vec[from]; // for the bounds check
     unsafe {
         let copy_len = copy_end - copy_start;
         vec.reserve(copy_len);
