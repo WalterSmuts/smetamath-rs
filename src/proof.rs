@@ -11,13 +11,13 @@ use segment_set::SegmentSet;
 use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::cmp::PartialOrd;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Write;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::hash::SipHasher;
 use std::ops::Range;
 use std::u16;
 use verify::verify_one;
@@ -53,7 +53,7 @@ impl Hash for ProofTree {
 impl ProofTree {
     /// Create a new proof tree using the given atom and children.
     pub fn new(parent: &ProofTreeArray, address: StatementAddress, children: Vec<usize>) -> Self {
-        let mut hasher = SipHasher::new();
+        let mut hasher = DefaultHasher::default();
         address.hash(&mut hasher);
         for &ix in &children {
             parent.trees[ix].hash(&mut hasher);
