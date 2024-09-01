@@ -582,7 +582,7 @@ fn verify_proof<'a, P: ProofBuilder>(
             for &ch in chunk {
                 if ch >= b'A' && ch <= b'T' {
                     k = k * 20 + (ch - b'A') as usize;
-                    execute_step(state, k);
+                    execute_step(state, k).unwrap();
                     k = 0;
                     can_save = true;
                 } else if ch >= b'U' && ch <= b'Y' {
